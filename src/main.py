@@ -42,15 +42,17 @@ def free_locations(board):
             free_locations.append(i)
     return free_locations
 
+
 class Node:
     def __init__(self) -> None:
         self.right = None
         self.left = None
         self.won = None
         self.draw = False
+        self.l_choice = None
+        self.r_choice = None
 
     def calculate(self, board: list, turn):
-        print(f"calculate function was called by {self}!")
         if won(board):
             print("won in calculate function")
             self.won = not turn
@@ -70,15 +72,17 @@ class Node:
             self.draw = True
             return
         
-        right_choice = random.choice(locations)
 
         left_board = board.copy()
         left_board[left_choice] = player_sign(turn)
+        self.l_choice = left_choice
         self.left = Node()
         self.left.calculate(left_board, not turn)
 
         right_board = board.copy()
+        right_choice = random.choice(locations)
         right_board[right_choice] = player_sign(turn)
+        self.r_choice = right_choice
         self.right = Node()
         self.right.calculate(right_board, not turn)
 
@@ -95,21 +99,36 @@ def parse_mm_tree(node: Node, turn, turns=[]) -> tuple:
         return Node, node == turn, turns
     
     if node.draw:
-        return Node, 3, turns
+        return Node, NODE_DRAW, turns
     
-    result_r = parse_mm_tree(node.right, turn, [RIGHT] + turns)
-    if result_r[1] == True:
-        return result_r
+    if node.right is not None:
+        result_r = parse_mm_tree(node.right, turn, [RIGHT] + turns)
+        if result_r[1]:
+            return result_r
+        elif result_r[1] == NODE_DRAW:
+            return result_r
+        
+    if node.left is not None:
+        result_l = parse_mm_tree(node.left, turn, [LEFT] + turns)
+        if result_l[1]:
+            return result_l
+        elif result_l[1] == NODE_DRAW:
+            return result_l
+        
+    return None, False, turns
     
-    return parse_mm_tree(node.left, turn, [LEFT] + turns)
-
 def minmax(board, turn) -> int:
     min_max_tree = MinMaxTree(board, turn)
 
-    winning_node = parse_mm_tree(min_max_tree.head, turn)
-    print(winning_node)
-    print(f"minmax winning node: {['LEFT' if i == LEFT else 'RIGHT' for i in winning_node[2]]}") 
+    winning = parse_mm_tree(min_max_tree.head, turn)
+    print(winning)
+    #print(f"minmax winning node: {['LEFT' if i == LEFT else 'RIGHT' for i in winning[2]]}") 
     
+    turns = winning[-1]
+    if turns[-1] == LEFT:
+        return min_max_tree.head.l_choice
+    return min_max_tree.head.r_choice
+
 
 
 def main():
@@ -138,10 +157,7 @@ def main():
             index = int(input("where do you want to place? ")) - 1
             board[index] = player_sign(turn)
         else:
-            print("start minmax")
-            minmax(board, turn)
-            print("done calculations!")
-            break
+            board[minmax(board, turn)] = player_sign(turn)
 
         turn = not turn
         

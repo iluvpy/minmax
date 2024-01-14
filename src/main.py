@@ -4,6 +4,7 @@ import random
 PL_CIRCLE = 0
 PL_CROSS = 1 
 NODE_DRAW = 3
+WON = 1
 LEFT = 1
 RIGHT = 2
 
@@ -53,6 +54,7 @@ class Node:
         self.r_choice = None
 
     def calculate(self, board: list, turn):
+
         if won(board):
             print("won in calculate function")
             self.won = not turn
@@ -96,23 +98,19 @@ class MinMaxTree:
 def parse_mm_tree(node: Node, turn, turns=[]) -> tuple:
 
     if node.won is not None:
-        return Node, node == turn, turns
+        return Node, node.won == turn, turns
     
     if node.draw:
         return Node, NODE_DRAW, turns
     
     if node.right is not None:
         result_r = parse_mm_tree(node.right, turn, [RIGHT] + turns)
-        if result_r[1]:
-            return result_r
-        elif result_r[1] == NODE_DRAW:
+        if result_r[1] == WON:
             return result_r
         
     if node.left is not None:
         result_l = parse_mm_tree(node.left, turn, [LEFT] + turns)
-        if result_l[1]:
-            return result_l
-        elif result_l[1] == NODE_DRAW:
+        if result_l[1] == WON:
             return result_l
         
     return None, False, turns
@@ -149,7 +147,7 @@ def main():
             print("\nIts a draw!")
             break
         if won(board):
-            print(f"\n{player_sign(turn)} has won!")
+            print(f"\n{player_sign(not turn)} has won!")
             break
 
         if first == turn: # players turn
@@ -161,9 +159,7 @@ def main():
 
         turn = not turn
         
-        print("")
-        print("")
-        print("")
+        print("\n"*5)
 
 
 if __name__ == "__main__":

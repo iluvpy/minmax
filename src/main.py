@@ -3,10 +3,8 @@ import random
 # constants
 PL_CIRCLE = 0
 PL_CROSS = 1 
-NODE_DRAW = 3
 WON = 1
-LEFT = 1
-RIGHT = 2
+
 
 def is_draw(board):
     numbers = 0
@@ -43,90 +41,63 @@ def free_locations(board):
             free_locations.append(i)
     return free_locations
 
-
-class Node:
+# Min Max Node
+class MM_Node:
     def __init__(self) -> None:
-        self.right = None
-        self.left = None
-        self.won = None
         self.draw = False
-        self.l_choice = None
-        self.r_choice = None
+        self.child_nodes = []
+        self.choices = []
+        self.val = 0
+        self.initial_turn = 0
+        self.is_child = False
 
     def calculate(self, board: list, turn):
-
         if won(board):
-            print("won in calculate function")
-            self.won = not turn
-            return
+            self.val = 10 if not turn == self.initial_turn else -10
+            return 
         
         locations = free_locations(board)
-
         if len(locations) <= 0:
-            self.draw = True
-            print("draw in calculate function")
+            self.val = 0
             return
-    
-        left_choice = random.choice(locations)
-        locations.remove(left_choice)
+        for free_loc in locations:
+            child_node = MM_Node()
+            self.child_nodes.append(child_node)
+            self.choices.append(free_loc)
+            new_board = board.copy()
+            new_board[free_loc] = player_sign(turn)
+            child_node.initial_turn = self.initial_turn
+            child_node.is_child = True
+            child_node.calculate(new_board, not turn)
 
-        if len(locations) <= 0:
-            self.draw = True
+        # if any node (besides the first node) has children with losing options, its a bad move
+        if -10 in [child_node.val for child_node in self.child_nodes] and self.is_child: 
+            self.val = -10
             return
-        
-
-        left_board = board.copy()
-        left_board[left_choice] = player_sign(turn)
-        self.l_choice = left_choice
-        self.left = Node()
-        self.left.calculate(left_board, not turn)
-
-        right_board = board.copy()
-        right_choice = random.choice(locations)
-        right_board[right_choice] = player_sign(turn)
-        self.r_choice = right_choice
-        self.right = Node()
-        self.right.calculate(right_board, not turn)
+        self.val = 0
+        for child_node in self.child_nodes:
+            if child_node.val > self.val:
+                self.val = child_node.val
 
 
-class MinMaxTree:
-    def __init__(self, board, turn) -> None:
-        self.head = Node()
-        self.head.calculate(board, turn)
-
-
-def parse_mm_tree(node: Node, turn, turns=[]) -> tuple:
-
-    if node.won is not None:
-        return Node, node.won == turn, turns
-    
-    if node.draw:
-        return Node, NODE_DRAW, turns
-    
-    if node.right is not None:
-        result_r = parse_mm_tree(node.right, turn, [RIGHT] + turns)
-        if result_r[1] == WON:
-            return result_r
-        
-    if node.left is not None:
-        result_l = parse_mm_tree(node.left, turn, [LEFT] + turns)
-        if result_l[1] == WON:
-            return result_l
-        
-    return None, False, turns
     
 def minmax(board, turn) -> int:
-    min_max_tree = MinMaxTree(board, turn)
+    initial_node = MM_Node()
+    initial_node.initial_turn = turn
+    initial_node.calculate(board, turn)
 
-    winning = parse_mm_tree(min_max_tree.head, turn)
-    print(winning)
-    #print(f"minmax winning node: {['LEFT' if i == LEFT else 'RIGHT' for i in winning[2]]}") 
+    child_nodes = initial_node.child_nodes
+    print([n.val for n in child_nodes])
+    print([n.is_child for n in child_nodes])
+    print(initial_node.is_child)
+    for i, node in enumerate(child_nodes):
+        if node.val == 10:
+            return node.choices[i]
+    # draw
+    for i, node in enumerate(child_nodes):
+        if node.val == 0:
+            return node.choices[i]
     
-    turns = winning[-1]
-    if turns[-1] == LEFT:
-        return min_max_tree.head.l_choice
-    return min_max_tree.head.r_choice
-
 
 
 def main():
@@ -137,12 +108,6 @@ def main():
     board = [i + 1 for i in range(9)]
 
     while True:
-        print(f"|{board[0]}|{board[1]}|{board[2]}|") 
-        print("-------") 
-        print(f"|{board[3]}|{board[4]}|{board[5]}|")  
-        print("-------") 
-        print(f"|{board[6]}|{board[7]}|{board[8]}|")  
-
         if is_draw(board):
             print("\nIts a draw!")
             break
@@ -151,15 +116,20 @@ def main():
             break
 
         if first == turn: # players turn
+            print(f"|{board[0]}|{board[1]}|{board[2]}|") 
+            print("-------") 
+            print(f"|{board[3]}|{board[4]}|{board[5]}|")  
+            print("-------") 
+            print(f"|{board[6]}|{board[7]}|{board[8]}|")  
             print("its your turn!")
             index = int(input("where do you want to place? ")) - 1
             board[index] = player_sign(turn)
+            print("\n"*5) 
         else:
             board[minmax(board, turn)] = player_sign(turn)
 
         turn = not turn
         
-        print("\n"*5)
 
 
 if __name__ == "__main__":
